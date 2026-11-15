@@ -19,6 +19,9 @@ export type AppState = {
   savePlan: (plan: Plan, message?: string) => void;
   openSettings: () => void;
   notify: (message: string) => void;
+  /** Starts (or restarts) the rest countdown between sets. */
+  startRest: (seconds: number) => void;
+  stopRest: () => void;
 };
 
 export const AppCtx = createContext<AppState | null>(null);

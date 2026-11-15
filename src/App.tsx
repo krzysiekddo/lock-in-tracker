@@ -12,6 +12,7 @@ import { AppCtx, Icon, Sheet } from "./ui/common";
 import { History } from "./ui/History";
 import { PlanView } from "./ui/PlanView";
 import { SettingsPanel } from "./ui/Settings";
+import { RestTimer } from "./ui/RestTimer";
 import { Today } from "./ui/Today";
 
 const BRAND = "Lock In";
@@ -113,6 +114,12 @@ function Home({ db, user }: { db: Firestore; user: User }) {
   const [toast, setToast] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, updateSettings] = useSettings();
+  const [rest, setRest] = useState<{ endsAt: number; total: number } | null>(null);
+  const endRest = useCallback(() => setRest(null), []);
+  const restDone = useCallback(() => {
+    setRest(null);
+    setToast("Koniec przerwy — następna seria 💪");
+  }, []);
 
   // Roll over to the new day when the app is reopened after midnight.
   useEffect(() => {
@@ -235,6 +242,8 @@ function Home({ db, user }: { db: Firestore; user: User }) {
         savePlan: storePlan,
         openSettings: () => setSettingsOpen(true),
         notify: setToast,
+        startRest: (sec) => setRest({ endsAt: Date.now() + sec * 1000, total: sec }),
+        stopRest: endRest,
       }}
     >
       <div className="app">
@@ -262,6 +271,15 @@ function Home({ db, user }: { db: Firestore; user: User }) {
           ))}
         </nav>
 
+        {rest && (
+          <RestTimer
+            endsAt={rest.endsAt}
+            total={rest.total}
+            onAdd={(sec) => setRest((r) => r && { endsAt: r.endsAt + sec * 1000, total: r.total + sec })}
+            onDone={restDone}
+            onSkip={endRest}
+          />
+        )}
         {settingsOpen && (
           <Sheet title="Ustawienia" onClose={() => setSettingsOpen(false)}>
             <SettingsPanel settings={settings} update={updateSettings} onClose={() => setSettingsOpen(false)} />

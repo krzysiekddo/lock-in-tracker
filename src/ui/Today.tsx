@@ -3,6 +3,7 @@ import { addDays, dayNumber, formatLong, formatShort, relativeLabel, weekDays, w
 import { dayStatus, findTemplate, formatKg, formatSets, lastSets, newExerciseLog, newGymLog, targetReps, volume, type DayStatus } from "../lib/plan";
 import type { DayLog, ExerciseLog, GymLog, SetLog, Template } from "../lib/types";
 import { Icon, numText, parseNum, SettingsButton, Tick, useApp } from "./common";
+import { primeSound, REST_SECONDS } from "./RestTimer";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -215,7 +216,7 @@ function GymCard({ log, status }: { log: DayLog | undefined; status: DayStatus }
 
 /** A started (or ticked) gym session; edits are kept locally and saved shortly after. */
 function GymSession({ log, initial }: { log: DayLog; initial: GymLog }) {
-  const { plan, days, saveDay, selected, notify } = useApp();
+  const { plan, days, saveDay, selected, notify, startRest, stopRest } = useApp();
   const [gym, setGym] = useState<GymLog>(initial);
   const [newName, setNewName] = useState("");
 
@@ -243,6 +244,7 @@ function GymSession({ log, initial }: { log: DayLog; initial: GymLog }) {
   const setEx = (i: number, e: ExerciseLog) => change({ ...gym, exercises: gym.exercises.map((x, j) => (j === i ? e : x)) });
 
   function toggleDone() {
+    if (!gym.done) stopRest();
     change({ ...gym, done: !gym.done }, true);
     if (!gym.done) notify(`${gym.name} odhaczony 💪`);
   }
@@ -300,7 +302,17 @@ function GymSession({ log, initial }: { log: DayLog; initial: GymLog }) {
               ex={e}
               date={selected}
               onChange={(next) => setEx(i, next)}
-              onTick={(next) => change({ ...gym, exercises: gym.exercises.map((x, j) => (j === i ? next : x)) }, true)}
+              onTick={(next) => {
+                const exercises = gym.exercises.map((x, j) => (j === i ? next : x));
+                change({ ...gym, exercises }, true);
+                const doneNow = next.sets.filter((s) => s.done).length > e.sets.filter((s) => s.done).length;
+                const allDone = exercises.every((x) => x.sets.every((s) => s.done));
+                // Rest after each ticked set, except the very last one of the workout.
+                if (doneNow && !allDone) {
+                  primeSound();
+                  startRest(REST_SECONDS);
+                } else if (allDone) stopRest();
+              }}
               onRemove={() => change({ ...gym, exercises: gym.exercises.filter((_, j) => j !== i) }, true)}
             />
           ))}
