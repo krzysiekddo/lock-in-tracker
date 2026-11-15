@@ -25,11 +25,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        # Firebase web config is public by design (it ships in the page's JS);
+        # access to data is guarded by firestore.rules, not by these values.
         env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_API_KEY: AIzaSyA03ET7IxNsGVoH8aW6ZyYlGaqcXvaWk7w
+          VITE_FIREBASE_AUTH_DOMAIN: lock-in-fe8b4.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: lock-in-fe8b4
+          VITE_FIREBASE_APP_ID: 1:656241142499:web:4f30cf98b4eca2a1bcf3d6
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist

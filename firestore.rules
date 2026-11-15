@@ -1,14 +1,9 @@
 rules_version = '2';
 
-// Each user can read and write only their own data.
-// Lock In keeps its data under lockin/{uid}, so it can share a Firebase project with Runs
-// (users/{uid}) without the two apps overwriting each other. Keep both blocks if you do.
+// Each user can read and write only their own plan and day logs.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /lockin/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-    match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
   }
