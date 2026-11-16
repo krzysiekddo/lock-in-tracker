@@ -1,3 +1,5 @@
+import type { NutritionProfile } from "./nutrition";
+
 /** One exercise in a gym template: target sets and reps (reps as text, e.g. "8–10"). */
 export type Exercise = { id: string; name: string; sets: number; reps: string };
 
@@ -13,6 +15,8 @@ export type Plan = {
   week: DayPlan[];
   /** First day of tracking (YYYY-MM-DD); earlier days are not counted as missed. */
   since: string;
+  /** Body data for the macro calculator; absent until filled in. */
+  nutrition?: NutritionProfile;
 };
 
 export type SetLog = { weight: number | null; reps: number | null; done: boolean };

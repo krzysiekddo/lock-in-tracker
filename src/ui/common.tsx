@@ -63,6 +63,7 @@ const PATHS: Record<string, string> = {
   today: "M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8L17 7M7 17l-1.4 1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
   plan: "M4 6h16M4 12h16M4 18h10",
   history: "M4 19h16M7 16v-5m5 5V7m5 9v-8",
+  food: "M7 3v8m-3-8v5a3 3 0 0 0 6 0V3M7 11v10m10-18c-2 1-3 4-3 7s1 4 3 4v7",
   plus: "M12 5v14M5 12h14",
   minus: "M5 12h14",
   close: "M6 6l12 12M18 6 6 18",

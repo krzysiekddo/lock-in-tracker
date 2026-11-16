@@ -367,7 +367,7 @@ code {
   bottom: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   align-items: center;
   max-width: 560px;
   margin: 0 auto;
@@ -1347,4 +1347,247 @@ textarea:focus {
 /* Keep the last sets reachable above the timer. */
 .app:has(.rest-timer) .content {
   padding-bottom: calc(var(--tabbar-h) + 120px + env(safe-area-inset-bottom));
+}
+
+/* ---------- nutrition ---------- */
+
+.kind-chips .chip.kind {
+  border-style: solid;
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.kind-chips .chip.kind.on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.kind-today {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.macro-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kcal {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.kcal-value {
+  font-size: 3rem;
+  line-height: 1;
+  font-stretch: 72%;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.macros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 6px 0 4px;
+}
+
+.macro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.macro-head {
+  display: flex;
+  flex-direction: column;
+}
+
+.macro-g {
+  font-size: 1.5rem;
+  line-height: 1.1;
+  font-stretch: 72%;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.macro-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--soft);
+  overflow: hidden;
+}
+
+.macro-fill {
+  height: 100%;
+  border-radius: 99px;
+}
+
+.p {
+  --m: var(--good);
+}
+.c {
+  --m: var(--accent);
+}
+.f {
+  --m: #c9a227;
+}
+
+.macro-fill {
+  background: var(--m);
+}
+
+.tips h2 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.tips ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.week-macros {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 16px;
+}
+
+.wm-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.3fr 1fr 0.8fr;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--soft);
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.wm-row:last-child {
+  border-bottom: 0;
+}
+
+.wm-row.today .wm-day {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.wm-day {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wm-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wm-kind {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--soft);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.wm-kind.k-gym,
+.wm-kind.k-run,
+.wm-kind.k-both {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--ink);
+}
+
+.food {
+  padding: 4px 16px;
+}
+
+.food-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 0;
+}
+
+.food-head h3 {
+  font-size: 1rem;
+}
+
+.food ul {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.food li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--soft);
+}
+
+.food-main {
+  flex: none;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--m);
+}
+
+.disclaimer {
+  padding: 0 4px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.form-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.segmented.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+}
+
+.option.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }

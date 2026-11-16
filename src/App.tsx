@@ -10,6 +10,7 @@ import { deleteDay, saveDay, savePlan, useServerStatus, useUserData } from "./li
 import type { DayLog, Plan } from "./lib/types";
 import { AppCtx, Icon, Sheet } from "./ui/common";
 import { History } from "./ui/History";
+import { Nutrition } from "./ui/Nutrition";
 import { PlanView } from "./ui/PlanView";
 import { SettingsPanel } from "./ui/Settings";
 import { RestTimer } from "./ui/RestTimer";
@@ -94,11 +95,12 @@ function Loading() {
   );
 }
 
-type Tab = "today" | "plan" | "history";
+type Tab = "today" | "plan" | "food" | "history";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "today", label: "Dziś" },
   { id: "plan", label: "Plan" },
+  { id: "food", label: "Jedzenie" },
   { id: "history", label: "Historia" },
 ];
 
@@ -251,6 +253,7 @@ function Home({ db, user }: { db: Firestore; user: User }) {
         <main className="content">
           {tab === "today" && <Today />}
           {tab === "plan" && <PlanView />}
+          {tab === "food" && <Nutrition />}
           {tab === "history" && <History />}
         </main>
 
