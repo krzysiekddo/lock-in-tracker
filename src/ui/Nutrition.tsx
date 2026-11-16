@@ -156,6 +156,9 @@ function Targets({ profile, onEdit }: { profile: NutritionProfile; onEdit: () =>
             <div key={meal.id} className="list-row meal-row">
               <div>
                 <p className="list-title">{meal.name}</p>
+                {meal.items && meal.items.length > 1 && (
+                  <p className="small meal-items">{meal.items.map((it) => it.name).join(" · ")}</p>
+                )}
                 <p className="muted small">
                   {meal.time} · {meal.kcal} kcal · B {meal.p} · W {meal.c} · T {meal.f}
                 </p>

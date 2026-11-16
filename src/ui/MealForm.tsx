@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { forGrams, searchFoods, type FoodItem } from "../lib/foods";
 import { uid } from "../lib/plan";
-import type { Meal } from "../lib/types";
+import type { Meal, MealItem } from "../lib/types";
 import { Icon, numText, parseNum, useApp } from "./common";
 
 const now = () => {
@@ -12,10 +12,82 @@ const now = () => {
 const PORTIONS = [0.5, 1, 1.5, 2];
 const portionLabel = (k: number) => (k === 0.5 ? "½" : k === 1.5 ? "1½" : String(k));
 
+const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+
+function autoName(items: MealItem[]): string {
+  if (!items.length) return "Posiłek";
+  return [items[0].name, ...items.slice(1).map((it) => lowerFirst(it.name))].join(" + ");
+}
+
+function total(items: MealItem[]) {
+  return items.reduce((a, x) => ({ kcal: a.kcal + x.kcal, p: a.p + x.p, c: a.c + x.c, f: a.f + x.f }), { kcal: 0, p: 0, c: 0, f: 0 });
+}
+
+/**
+ * Builds a meal from one or more parts (a dish plus add-ons). Each part comes from the
+ * food list or from typed-in macros; "Zapisz" saves everything as one meal.
+ */
 export function MealForm({ onAdd }: { onAdd: (meal: Meal) => void }) {
   const [mode, setMode] = useState<"list" | "manual">("list");
+  const [items, setItems] = useState<MealItem[]>([]);
+  const [name, setName] = useState("");
+  // Bumped after adding a part, so the picker starts fresh for the next add-on.
+  const [round, setRound] = useState(0);
+
+  function save(extra?: MealItem) {
+    const all = extra ? [...items, extra] : items;
+    if (!all.length) return;
+    const t = total(all);
+    onAdd({
+      id: uid(),
+      name: name.trim() || autoName(all),
+      time: now(),
+      ...t,
+      grams: all.length === 1 ? all[0].grams : undefined,
+      items: all.length > 1 ? all : undefined,
+    });
+  }
+
+  function addPart(item: MealItem) {
+    setItems((xs) => [...xs, item]);
+    setRound((r) => r + 1);
+  }
+
+  const t = total(items);
+
   return (
     <div className="form">
+      {items.length > 0 && (
+        <section className="plate">
+          <ul>
+            {items.map((it, i) => (
+              <li key={i}>
+                <span>
+                  <span className="list-title">{it.name}</span>
+                  <span className="muted small">
+                    {it.kcal} kcal · B {it.p} · W {it.c} · T {it.f}
+                  </span>
+                </span>
+                <button className="icon-btn sm" onClick={() => setItems((xs) => xs.filter((_, j) => j !== i))} aria-label={`Usuń ${it.name}`}>
+                  <Icon name="close" size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="meal-preview">
+            <strong>{t.kcal} kcal</strong>
+            <span>B {t.p} g</span>
+            <span>W {t.c} g</span>
+            <span>T {t.f} g</span>
+          </div>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={autoName(items)} aria-label="Nazwa posiłku" />
+          <button className="primary" onClick={() => save()}>
+            Zapisz posiłek
+          </button>
+          <p className="plate-more">Dodaj kolejny dodatek:</p>
+        </section>
+      )}
+
       <div className="segmented two" role="tablist">
         <button role="tab" aria-selected={mode === "list"} className={mode === "list" ? "selected" : ""} onClick={() => setMode("list")}>
           Na oko z listy
@@ -24,7 +96,33 @@ export function MealForm({ onAdd }: { onAdd: (meal: Meal) => void }) {
           Wpisz makro
         </button>
       </div>
-      {mode === "list" ? <FromList onAdd={onAdd} /> : <Manual onAdd={onAdd} />}
+      {mode === "list" ? (
+        <FromList
+          key={round}
+          hasItems={items.length > 0}
+          onSave={save}
+          onAddPart={addPart}
+          onRepeat={(m) => onAdd({ ...m, id: uid(), time: now() })}
+        />
+      ) : (
+        <Manual key={round} hasItems={items.length > 0} onSave={save} onAddPart={addPart} />
+      )}
+    </div>
+  );
+}
+
+type PartProps = { hasItems: boolean; onSave: (item: MealItem) => void; onAddPart: (item: MealItem) => void };
+
+/** "Save" and "add another part" buttons shared by both pickers. */
+function PartActions({ item, hasItems, onSave, onAddPart }: PartProps & { item: MealItem | null }) {
+  return (
+    <div className="part-actions">
+      <button className="primary" disabled={!item} onClick={() => item && onSave(item)}>
+        {hasItems ? "Dodaj i zapisz posiłek" : "Zapisz posiłek"}
+      </button>
+      <button className="secondary" disabled={!item} onClick={() => item && onAddPart(item)}>
+        <Icon name="plus" size={18} /> Dodaj i wybierz dodatek
+      </button>
     </div>
   );
 }
@@ -48,31 +146,31 @@ function useRecent(): Meal[] {
   }, [days]);
 }
 
-function FromList({ onAdd }: { onAdd: (meal: Meal) => void }) {
+function FromList({ hasItems, onSave, onAddPart, onRepeat }: PartProps & { onRepeat: (meal: Meal) => void }) {
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<FoodItem | null>(null);
   const recent = useRecent();
   const results = useMemo(() => searchFoods(query), [query]);
 
-  if (picked) return <Portion item={picked} onBack={() => setPicked(null)} onAdd={onAdd} />;
+  if (picked) return <Portion item={picked} onBack={() => setPicked(null)} hasItems={hasItems} onSave={onSave} onAddPart={onAddPart} />;
 
   return (
     <>
       <input
         type="search"
-        placeholder="Szukaj: pierogi, kurczak, owsianka…"
+        placeholder={hasItems ? "Szukaj dodatku: pomidor, granola, bułka…" : "Szukaj: pierogi, kurczak, owsianka…"}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         aria-label="Szukaj produktu lub dania"
       />
 
-      {!query && recent.length > 0 && (
+      {!query && !hasItems && recent.length > 0 && (
         <div className="pick-group">
           <p className="muted small">Ostatnio jedzone — dodaj jednym kliknięciem</p>
           <ul className="pick-list">
             {recent.map((m) => (
               <li key={m.id}>
-                <button onClick={() => onAdd({ ...m, id: uid(), time: now() })}>
+                <button onClick={() => onRepeat(m)}>
                   <span>
                     <span className="list-title">{m.name}</span>
                     <span className="muted small">
@@ -116,7 +214,7 @@ function FromList({ onAdd }: { onAdd: (meal: Meal) => void }) {
   );
 }
 
-function Portion({ item, onBack, onAdd }: { item: FoodItem; onBack: () => void; onAdd: (meal: Meal) => void }) {
+function Portion({ item, onBack, ...actions }: { item: FoodItem; onBack: () => void } & PartProps) {
   const [grams, setGrams] = useState(item.grams);
   const [gramsText, setGramsText] = useState(String(item.grams));
   const a = forGrams(item, grams);
@@ -172,29 +270,19 @@ function Portion({ item, onBack, onAdd }: { item: FoodItem; onBack: () => void; 
         <span>T {a.f} g</span>
       </div>
 
-      <button
-        className="primary"
-        disabled={!grams}
-        onClick={() =>
-          onAdd({
-            id: uid(),
-            name: Math.abs(factor - 1) < 0.01 ? item.name : `${item.name} (${grams} g)`,
-            time: now(),
-            grams,
-            kcal: a.kcal,
-            p: a.p,
-            c: a.c,
-            f: a.f,
-          })
+      <PartActions
+        {...actions}
+        item={
+          grams
+            ? { name: Math.abs(factor - 1) < 0.01 ? item.name : `${item.name} (${grams} g)`, grams, kcal: a.kcal, p: a.p, c: a.c, f: a.f }
+            : null
         }
-      >
-        Dodaj
-      </button>
+      />
     </>
   );
 }
 
-function Manual({ onAdd }: { onAdd: (meal: Meal) => void }) {
+function Manual(actions: PartProps) {
   const [name, setName] = useState("");
   const [vals, setVals] = useState<Record<"kcal" | "p" | "c" | "f", string>>({ kcal: "", p: "", c: "", f: "" });
   const num = (k: keyof typeof vals) => {
@@ -236,23 +324,10 @@ function Manual({ onAdd }: { onAdd: (meal: Meal) => void }) {
         {field("kcal", "Kalorie", "kcal")}
       </div>
       <p className="muted small">Wystarczą same gramy makro — kalorie policzę sam. Albo wpisz tylko kalorie.</p>
-      <button
-        className="primary"
-        disabled={!ok}
-        onClick={() =>
-          onAdd({
-            id: uid(),
-            name: name.trim() || "Posiłek",
-            time: now(),
-            kcal: Math.round(kcal),
-            p: Math.round(p),
-            c: Math.round(c),
-            f: Math.round(f),
-          })
-        }
-      >
-        Dodaj
-      </button>
+      <PartActions
+        {...actions}
+        item={ok ? { name: name.trim() || "Posiłek", kcal: Math.round(kcal), p: Math.round(p), c: Math.round(c), f: Math.round(f) } : null}
+      />
     </>
   );
 }

@@ -59,4 +59,8 @@ export type Meal = {
   f: number;
   /** For items from the food list: grams eaten. */
   grams?: number;
+  /** Parts of a composed meal (e.g. yoghurt + granola); totals above are their sum. */
+  items?: MealItem[];
 };
+
+export type MealItem = { name: string; grams?: number; kcal: number; p: number; c: number; f: number };

@@ -91,6 +91,23 @@ export const FOOD_DB: FoodItem[] = [
   x("Truskawki / borówki", "1 miseczka", 150, 0.8, 10, 0.4, "owoce"),
   x("Warzywa (mix)", "1 porcja", 200, 2, 5, 0.3, "surówka sałatka brokuł"),
 
+  // Add-ons
+  x("Pomidor", "1 szt.", 120, 0.9, 3.6, 0.2, "warzywa dodatek"),
+  x("Ogórek", "1 szt.", 150, 0.7, 3, 0.1, "warzywa dodatek"),
+  x("Papryka", "½ szt.", 80, 1, 5, 0.3, "warzywa dodatek"),
+  x("Cebula", "½ szt.", 50, 1.4, 9, 0.1, "warzywa dodatek"),
+  x("Granola", "3 łyżki", 30, 9, 62, 15, "musli płatki dodatek"),
+  x("Miód", "1 łyżeczka", 10, 0.3, 80, 0, "dodatek słodkie"),
+  x("Dżem", "1 łyżka", 20, 0.4, 50, 0.1, "dodatek słodkie"),
+  x("Ketchup", "1 łyżka", 15, 1.5, 24, 0.2, "sos dodatek"),
+  x("Majonez", "1 łyżka", 15, 1, 2, 75, "sos dodatek"),
+  x("Sos czosnkowy", "2 łyżki", 30, 2, 6, 20, "sos dodatek"),
+  x("Mozzarella", "½ kulki", 60, 18, 2, 18, "ser dodatek"),
+  x("Feta", "¼ kostki", 50, 15, 2, 21, "ser dodatek"),
+  x("Hummus", "2 łyżki", 40, 7, 14, 17, "dodatek pasta"),
+  x("Rodzynki / żurawina", "1 łyżka", 15, 2.5, 76, 0.5, "suszone owoce dodatek"),
+  x("Siemię / chia", "1 łyżka", 10, 18, 30, 33, "nasiona dodatek"),
+
   // Fats & snacks
   x("Masło orzechowe", "1 łyżka", 20, 25, 13, 50, ""),
   x("Orzechy (mix)", "garść", 30, 18, 14, 55, "migdały"),

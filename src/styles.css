@@ -1728,3 +1728,56 @@ textarea:focus {
   font-weight: 600;
   color: var(--muted);
 }
+
+.meal-items {
+  color: var(--ink);
+  opacity: 0.8;
+}
+
+.plate {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+}
+
+.plate ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plate li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--soft);
+}
+
+.plate li > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.plate li .icon-btn {
+  background: none;
+  color: var(--muted);
+}
+
+.plate-more {
+  margin-top: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.part-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
