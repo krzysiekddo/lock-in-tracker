@@ -1781,3 +1781,16 @@ textarea:focus {
   flex-direction: column;
   gap: 8px;
 }
+
+.stepper {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.stepper input {
+  text-align: center;
+  padding-left: 14px;
+}

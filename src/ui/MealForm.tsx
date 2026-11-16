@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { forGrams, searchFoods, type FoodItem } from "../lib/foods";
+import { formatQty, forGrams, itemName, searchFoods, type FoodItem } from "../lib/foods";
 import { uid } from "../lib/plan";
 import type { Meal, MealItem } from "../lib/types";
 import { Icon, numText, parseNum, useApp } from "./common";
@@ -9,14 +9,15 @@ const now = () => {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
-const PORTIONS = [0.5, 1, 1.5, 2];
-const portionLabel = (k: number) => (k === 0.5 ? "½" : k === 1.5 ? "1½" : String(k));
 
 const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
 
 function autoName(items: MealItem[]): string {
   if (!items.length) return "Posiłek";
-  return [items[0].name, ...items.slice(1).map((it) => lowerFirst(it.name))].join(" + ");
+  if (items.length === 1) return items[0].name;
+  // Drop the amounts ("— 3 jajka") so the name stays short; the parts list keeps them.
+  const base = (n: string) => n.split(" — ")[0];
+  return [base(items[0].name), ...items.slice(1).map((it) => lowerFirst(base(it.name)))].join(" + ");
 }
 
 function total(items: MealItem[]) {
@@ -192,14 +193,17 @@ function FromList({ hasItems, onSave, onAddPart, onRepeat }: PartProps & { onRep
         ) : (
           <ul className="pick-list">
             {results.map((it) => {
-              const a = forGrams(it, it.grams);
+              const dv = it.variants[it.defVariant ?? 0];
+              const a = forGrams(dv, it.unit.grams * it.unit.def);
               return (
                 <li key={it.name}>
                   <button onClick={() => setPicked(it)}>
                     <span>
                       <span className="list-title">{it.name}</span>
                       <span className="muted small">
-                        {it.portion} · {a.kcal} kcal · B {a.p} · W {a.c} · T {a.f}
+                        {it.variants.length > 1
+                          ? it.variants.map((x) => x.label).join(" · ")
+                          : `${formatQty(it.unit, it.unit.def)} · ${a.kcal} kcal`}
                       </span>
                     </span>
                     <Icon name="chevron" size={18} />
@@ -215,15 +219,19 @@ function FromList({ hasItems, onSave, onAddPart, onRepeat }: PartProps & { onRep
 }
 
 function Portion({ item, onBack, ...actions }: { item: FoodItem; onBack: () => void } & PartProps) {
-  const [grams, setGrams] = useState(item.grams);
-  const [gramsText, setGramsText] = useState(String(item.grams));
-  const a = forGrams(item, grams);
-  const factor = grams / item.grams;
+  const { unit } = item;
+  const [vi, setVi] = useState(item.defVariant ?? 0);
+  const [qty, setQty] = useState(unit.def);
+  const [qtyText, setQtyText] = useState(numText(unit.def));
+  const variant = item.variants[vi];
+  const grams = Math.round(qty * unit.grams);
+  const a = forGrams(variant, grams);
+  const isGrams = unit.grams === 1;
 
-  const pick = (k: number) => {
-    const g = Math.round(item.grams * k);
-    setGrams(g);
-    setGramsText(String(g));
+  const setBoth = (n: number) => {
+    const clean = Math.max(0, Math.round(n * 100) / 100);
+    setQty(clean);
+    setQtyText(numText(clean));
   };
 
   return (
@@ -231,37 +239,55 @@ function Portion({ item, onBack, ...actions }: { item: FoodItem; onBack: () => v
       <button className="link back-link" onClick={onBack}>
         <Icon name="back" size={16} /> Wróć do listy
       </button>
-      <div>
-        <h3 className="pick-title">{item.name}</h3>
-        <p className="muted small">1 porcja = {item.portion} (ok. {item.grams} g)</p>
-      </div>
+      <h3 className="pick-title">{item.name}</h3>
+
+      {item.variants.length > 1 && (
+        <div className="field">
+          <span>Jaki?</span>
+          <div className="chips">
+            {item.variants.map((x, i) => (
+              <button key={x.label} className={`chip kind ${i === vi ? "on" : ""}`} onClick={() => setVi(i)}>
+                {x.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="field">
-        <span>Ile porcji?</span>
+        <span>Ile?</span>
         <div className="chips">
-          {PORTIONS.map((k) => (
-            <button key={k} className={`chip kind ${Math.abs(factor - k) < 0.01 ? "on" : ""}`} onClick={() => pick(k)}>
-              {portionLabel(k)}
+          {unit.steps.map((k) => (
+            <button key={k} className={`chip kind ${qty === k ? "on" : ""}`} onClick={() => setBoth(k)}>
+              {formatQty(unit, k)}
             </button>
           ))}
         </div>
+        <div className="stepper">
+          <button className="icon-btn" onClick={() => setBoth(Math.max(unit.inc, qty - unit.inc))} aria-label="Mniej" disabled={qty <= unit.inc}>
+            <Icon name="minus" size={18} />
+          </button>
+          <span className="num-field">
+            <input
+              inputMode="decimal"
+              value={qtyText}
+              aria-label="Ilość"
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                setQtyText(e.target.value);
+                const n = parseNum(e.target.value);
+                if (n !== null && !Number.isNaN(n)) setQty(n);
+              }}
+              onBlur={() => setQtyText(numText(qty))}
+            />
+            <span>{isGrams ? unit.forms[0] : unit.forms[2]}</span>
+          </span>
+          <button className="icon-btn" onClick={() => setBoth(qty + unit.inc)} aria-label="Więcej">
+            <Icon name="plus" size={18} />
+          </button>
+        </div>
+        {!isGrams && <span className="muted small">ok. {grams} g</span>}
       </div>
-
-      <label className="field">
-        <span>albo dokładnie</span>
-        <span className="num-field">
-          <input
-            inputMode="numeric"
-            value={gramsText}
-            onChange={(e) => {
-              setGramsText(e.target.value);
-              const n = parseNum(e.target.value);
-              if (n !== null && !Number.isNaN(n)) setGrams(n);
-            }}
-          />
-          <span>g</span>
-        </span>
-      </label>
 
       <div className="meal-preview">
         <strong>{a.kcal} kcal</strong>
@@ -270,14 +296,7 @@ function Portion({ item, onBack, ...actions }: { item: FoodItem; onBack: () => v
         <span>T {a.f} g</span>
       </div>
 
-      <PartActions
-        {...actions}
-        item={
-          grams
-            ? { name: Math.abs(factor - 1) < 0.01 ? item.name : `${item.name} (${grams} g)`, grams, kcal: a.kcal, p: a.p, c: a.c, f: a.f }
-            : null
-        }
-      />
+      <PartActions {...actions} item={qty > 0 ? { name: itemName(item, variant, qty), grams, kcal: a.kcal, p: a.p, c: a.c, f: a.f } : null} />
     </>
   );
 }

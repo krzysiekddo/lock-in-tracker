@@ -1,141 +1,188 @@
-// Common foods and dishes for eyeballing a meal: macros per 100 g plus a typical portion.
-// Values are rounded averages (Polish tables / product labels), good enough for tracking.
+// Foods and dishes for eyeballing a meal. Each item is counted in its natural unit
+// (eggs, slices, grams, spoons, plates) and may come in variants (lean/semi/full-fat
+// cottage cheese, white/rye bread…). Macros are per 100 g, rounded averages from
+// Polish tables and typical labels: good enough for tracking.
+
+export type Macros100 = { p: number; c: number; f: number };
+
+export type Variant = Macros100 & { label: string };
+
+export type Unit = {
+  /** Polish forms: 1, 2–4, 5+, and optionally a fraction (e.g. "talerza"). */
+  forms: [string, string, string, string?];
+  /** Grams in one unit (1 for g/ml). */
+  grams: number;
+  /** Quick picks. */
+  steps: number[];
+  /** Starting amount. */
+  def: number;
+  /** +/- increment. */
+  inc: number;
+};
 
 export type FoodItem = {
   name: string;
-  /** Extra words that should find this item in search. */
   tags?: string;
-  portion: string;
-  grams: number;
-  /** Per 100 g. */
-  p: number;
-  c: number;
-  f: number;
+  unit: Unit;
+  variants: Variant[];
+  /** Index of the default variant. */
+  defVariant?: number;
 };
 
-const x = (name: string, portion: string, grams: number, p: number, c: number, f: number, tags?: string): FoodItem => ({
+// ---- units ----
+const G = (steps = [50, 100, 150, 200, 250], def = 100, inc = 10): Unit => ({ forms: ["g", "g", "g"], grams: 1, steps, def, inc });
+const ML = (steps = [100, 200, 250, 330, 500], def = 250): Unit => ({ forms: ["ml", "ml", "ml"], grams: 1, steps, def, inc: 50 });
+const PCS = (forms: Unit["forms"], grams: number, steps = [1, 2, 3, 4], def = 1, inc = 1): Unit => ({ forms, grams, steps, def, inc });
+const SZT = (grams: number, steps = [1, 2, 3], def = 1, inc = 0.5) => PCS(["szt.", "szt.", "szt."], grams, steps, def, inc);
+const SPOON = (grams: number, def = 1) => PCS(["łyżka", "łyżki", "łyżek", "łyżki"], grams, [1, 2, 3], def, 0.5);
+const TSP = (grams: number, def = 1) => PCS(["łyżeczka", "łyżeczki", "łyżeczek", "łyżeczki"], grams, [1, 2, 3], def, 0.5);
+const PLATE = (grams: number) => PCS(["talerz", "talerze", "talerzy", "talerza"], grams, [0.5, 1, 1.5, 2], 1, 0.5);
+const PORTION = (grams: number) => PCS(["porcja", "porcje", "porcji", "porcji"], grams, [0.5, 1, 1.5, 2], 1, 0.5);
+const SLICE = (grams: number, def = 2) => PCS(["kromka", "kromki", "kromek", "kromki"], grams, [1, 2, 3, 4], def, 1);
+const PLASTER = (grams: number, def = 2) => PCS(["plaster", "plastry", "plastrów", "plastra"], grams, [1, 2, 3, 4], def, 1);
+const EGG = (grams: number, def = 2) => PCS(["jajko", "jajka", "jajek", "jajka"], grams, [1, 2, 3, 4, 5], def, 1);
+const SLICE_PIZZA = PCS(["kawałek", "kawałki", "kawałków", "kawałka"], 110, [1, 2, 3, 4], 2, 1);
+
+// ---- helpers ----
+const v = (label: string, p: number, c: number, f: number): Variant => ({ label, p, c, f });
+const one = (p: number, c: number, f: number) => [v("", p, c, f)];
+const food = (name: string, unit: Unit, variants: Variant[], tags?: string, defVariant = 0): FoodItem => ({
   name,
-  portion,
-  grams,
-  p,
-  c,
-  f,
+  unit,
+  variants,
   tags,
+  defVariant,
 });
 
 export const FOOD_DB: FoodItem[] = [
-  // Breakfast & dairy
-  x("Owsianka na mleku", "1 miska", 300, 5, 15, 3, "płatki owsiane śniadanie"),
-  x("Płatki owsiane", "60 g", 60, 13, 60, 7, "owsianka"),
-  x("Jajecznica z 3 jaj", "1 porcja", 170, 12, 1, 13, "jajka śniadanie"),
-  x("Jajko gotowane", "1 szt.", 55, 13, 1, 10, "jajka"),
-  x("Kanapka z wędliną", "1 szt.", 90, 11, 30, 7, "chleb szynka"),
-  x("Kanapka z serem", "1 szt.", 85, 11, 28, 12, "chleb ser żółty"),
-  x("Chleb pszenny", "1 kromka", 35, 8, 50, 2, "pieczywo"),
-  x("Chleb żytni", "1 kromka", 40, 6, 45, 1.5, "pieczywo razowy"),
-  x("Bułka kajzerka", "1 szt.", 50, 9, 56, 3, "pieczywo"),
-  x("Skyr naturalny", "1 kubek", 150, 11, 4, 0, "jogurt"),
-  x("Jogurt naturalny", "1 kubek", 150, 4, 6, 3, ""),
-  x("Twaróg chudy", "½ kostki", 125, 18, 3.5, 0.5, "biały ser"),
-  x("Serek wiejski", "1 opak.", 200, 11, 2, 5, "cottage"),
-  x("Ser żółty", "1 plaster", 15, 26, 0, 28, "gouda"),
-  x("Mleko 2%", "1 szklanka", 250, 3.2, 4.8, 2, ""),
-  x("Odżywka białkowa (WPC)", "1 miarka", 30, 75, 8, 6, "białko shake protein"),
-  x("Musli / granola", "50 g", 50, 9, 62, 15, "płatki"),
+  // ---------- eggs & breakfast ----------
+  food("Jajecznica", EGG(60, 3), [v("na maśle", 11.5, 1, 14), v("na oleju", 11.5, 1, 14), v("bez tłuszczu", 12.5, 0.8, 10)], "jajka śniadanie"),
+  food("Jajka sadzone", EGG(60, 2), [v("na maśle", 12, 0.8, 15), v("bez tłuszczu", 12.5, 0.8, 10)], "jajko śniadanie"),
+  food("Jajko gotowane", EGG(55, 2), one(12.5, 0.8, 10), "jajka na twardo miękko"),
+  food("Omlet", EGG(70, 3), [v("zwykły", 10, 2, 12), v("z serem", 13, 2, 16), v("na słodko (z mąką)", 9, 15, 10)], "jajka śniadanie"),
+  food("Owsianka", PORTION(300), [v("na mleku", 5, 15, 3), v("na wodzie", 2.5, 12, 1.5), v("na mleku z odżywką", 9, 14, 3)], "płatki owsiane śniadanie"),
+  food("Płatki owsiane", G([30, 40, 50, 60, 80, 100], 50), one(13, 60, 7), "owsianka suche"),
+  food("Granola / musli", G([20, 30, 40, 50, 60], 40), [v("granola", 9, 62, 15), v("musli bez cukru", 10, 60, 7)], "płatki dodatek"),
+  food("Płatki kukurydziane", G([30, 40, 50, 60], 40), one(7, 84, 1), "corn flakes"),
+  food("Naleśniki", SZT(80, [1, 2, 3, 4], 2, 1), [v("z serem", 9, 25, 7), v("z dżemem", 6, 38, 6), v("z nutellą", 6, 40, 12)], "słodkie"),
+  food("Tosty z serem", SZT(90, [1, 2, 3, 4], 2, 1), [v("z serem", 13, 30, 12), v("z serem i szynką", 15, 28, 11)], "kanapka"),
+  food("Kanapka", SZT(90, [1, 2, 3, 4], 2, 1), [v("z wędliną", 11, 30, 7), v("z serem", 11, 28, 12), v("z jajkiem", 9, 28, 9), v("z twarożkiem", 10, 30, 5)], "chleb"),
 
-  // Meat & fish
-  x("Pierś z kurczaka (pieczona)", "1 porcja", 150, 30, 0, 3.5, "kurczak filet"),
-  x("Udko z kurczaka", "1 szt.", 120, 20, 0, 12, "kurczak"),
-  x("Kotlet schabowy", "1 szt.", 150, 20, 10, 18, "panierowany schab"),
-  x("Mielone (kotlet)", "1 szt.", 120, 15, 10, 20, "mielony"),
-  x("Wołowina (stek)", "1 porcja", 180, 26, 0, 10, "stek"),
-  x("Indyk (pierś)", "1 porcja", 150, 29, 0, 2, ""),
-  x("Szynka / wędlina", "3 plastry", 45, 18, 2, 5, "wędlina"),
-  x("Kiełbasa", "1 porcja", 100, 13, 2, 27, ""),
-  x("Parówki", "2 szt.", 100, 12, 2, 22, ""),
-  x("Łosoś", "1 porcja", 125, 20, 0, 13, "ryba"),
-  x("Dorsz / mintaj", "1 porcja", 150, 18, 0, 1, "ryba biała"),
-  x("Tuńczyk w sosie własnym", "1 puszka", 120, 24, 0, 1, "ryba"),
+  // ---------- dairy ----------
+  food("Twaróg", G([50, 100, 125, 150, 200, 250], 125), [v("chudy", 18, 3.5, 0.5), v("półtłusty", 18, 3.7, 4.7), v("tłusty", 16, 3.5, 10)], "biały ser"),
+  food("Jogurt", G([100, 150, 200, 250, 400], 150), [v("naturalny 2%", 4.3, 6, 2), v("grecki 10%", 4, 4, 10), v("typu greckiego 0%", 8, 4, 0), v("owocowy", 3.5, 14, 2.5)], "kubek"),
+  food("Skyr", G([100, 150, 200, 300, 450], 150), [v("naturalny", 11, 4, 0), v("smakowy", 9, 10, 0.3)], "jogurt"),
+  food("Serek wiejski", G([100, 150, 200], 200), [v("zwykły", 11, 2, 5), v("light", 12, 2, 2.5)], "cottage"),
+  food("Ser żółty", PLASTER(15), [v("zwykły", 26, 0, 28), v("light", 30, 0, 16)], "gouda edam"),
+  food("Mozzarella", G([30, 60, 125], 60), [v("zwykła", 18, 2, 18), v("light", 20, 2, 9)], "ser"),
+  food("Feta / sałatkowy", G([30, 50, 100], 50), one(15, 2, 21), "ser"),
+  food("Serek do smarowania", TSP(15, 2), [v("śmietankowy", 6, 4, 24), v("light", 9, 6, 9)], "almette philadelphia"),
+  food("Mleko", ML([100, 200, 250, 300, 500], 250), [v("0,5%", 3.4, 5, 0.5), v("2%", 3.2, 4.8, 2), v("3,2%", 3.1, 4.7, 3.2), v("roślinne (owsiane)", 1, 7, 1.5)], ""),
+  food("Kefir / maślanka", ML([200, 250, 400, 500], 400), [v("kefir", 3.4, 4.5, 2), v("maślanka", 3, 4.5, 1.5)], ""),
+  food("Odżywka białkowa", PCS(["miarka", "miarki", "miarek", "miarki"], 30, [0.5, 1, 1.5, 2], 1, 0.5), [v("WPC", 75, 8, 6), v("izolat (WPI)", 88, 2, 1), v("roślinna", 70, 8, 7)], "białko shake protein"),
 
-  // Carbs
-  x("Ryż biały (ugotowany)", "1 porcja", 200, 2.7, 28, 0.3, "ryż"),
-  x("Makaron (ugotowany)", "1 porcja", 220, 5.5, 30, 1, "spaghetti"),
-  x("Ziemniaki gotowane", "1 porcja", 250, 2, 17, 0.1, ""),
-  x("Frytki", "1 porcja", 150, 3.5, 35, 15, "fast food"),
-  x("Kasza gryczana (ugotowana)", "1 porcja", 180, 4, 20, 1, "kasza"),
-  x("Kasza bulgur (ugotowana)", "1 porcja", 180, 3, 19, 0.3, "kasza"),
-  x("Tortilla pszenna", "1 szt.", 60, 8, 50, 7, "wrap placek"),
+  // ---------- meat & fish ----------
+  food("Pierś z kurczaka", G([100, 150, 200, 250, 300], 150), [v("pieczona / grillowana", 30, 0, 3.5), v("smażona", 28, 1, 8), v("panierowana", 22, 10, 10), v("surowa (waga)", 22, 0, 1.5)], "kurczak filet"),
+  food("Udko z kurczaka", SZT(120, [1, 2, 3], 1, 1), [v("pieczone ze skórą", 20, 0, 12), v("bez skóry", 22, 0, 6)], "kurczak"),
+  food("Indyk", G([100, 150, 200, 250], 150), one(29, 0, 2), "pierś"),
+  food("Kotlet schabowy", SZT(150, [1, 2], 1, 0.5), one(20, 10, 18), "panierowany schab"),
+  food("Kotlet mielony", SZT(120, [1, 2, 3], 1, 1), one(15, 10, 20), "mielony"),
+  food("Wołowina", G([100, 150, 200, 250], 150), [v("stek", 26, 0, 10), v("mielona chuda", 21, 0, 8), v("mielona zwykła", 19, 0, 17)], "stek"),
+  food("Wieprzowina", G([100, 150, 200], 150), [v("schab pieczony", 28, 0, 8), v("karkówka", 22, 0, 18), v("boczek", 14, 0, 40)], ""),
+  food("Wędlina", PLASTER(15, 3), [v("szynka drobiowa", 19, 2, 3), v("szynka wieprzowa", 18, 2, 5), v("salami", 22, 1, 35)], "szynka"),
+  food("Kiełbasa", G([50, 100, 150], 100), [v("zwykła", 13, 2, 27), v("drobiowa", 15, 2, 15)], ""),
+  food("Parówki", SZT(50, [1, 2, 3, 4], 2, 1), [v("zwykłe", 12, 2, 22), v("z szynki (90% mięsa)", 15, 1, 17)], ""),
+  food("Łosoś", G([100, 125, 150, 200], 125), [v("pieczony / świeży", 20, 0, 13), v("wędzony", 21, 0, 10)], "ryba"),
+  food("Ryba biała", G([100, 150, 200], 150), [v("dorsz / mintaj", 18, 0, 1), v("panierowana", 13, 12, 8)], "dorsz mintaj"),
+  food("Tuńczyk z puszki", G([60, 120, 170], 120), [v("w sosie własnym", 24, 0, 1), v("w oleju", 25, 0, 9)], "ryba"),
 
-  // Dishes
-  x("Pierogi ruskie", "8 szt.", 280, 6, 28, 6, "pierogi"),
-  x("Pierogi z mięsem", "8 szt.", 280, 9, 25, 8, "pierogi"),
-  x("Spaghetti bolognese", "1 talerz", 400, 7, 17, 5, "makaron"),
-  x("Kurczak z ryżem i warzywami", "1 pudełko", 400, 11, 16, 3, "meal prep obiad"),
-  x("Zupa (pomidorowa, ogórkowa)", "1 talerz", 350, 1.5, 7, 2, "zupa"),
-  x("Rosół z makaronem", "1 talerz", 350, 3, 5, 2, "zupa"),
-  x("Żurek z jajkiem i kiełbasą", "1 talerz", 400, 4, 6, 6, "zupa"),
-  x("Bigos", "1 porcja", 300, 7, 6, 9, ""),
-  x("Gulasz z kaszą", "1 porcja", 400, 8, 12, 5, "obiad"),
-  x("Naleśniki z serem", "2 szt.", 220, 9, 25, 7, "słodkie"),
-  x("Pizza", "2 kawałki", 220, 11, 30, 10, "fast food"),
-  x("Kebab w bułce", "1 szt.", 400, 11, 20, 11, "fast food"),
-  x("Burger", "1 szt.", 250, 13, 25, 13, "fast food hamburger"),
-  x("Sushi (maki/nigiri)", "8 szt.", 240, 6, 30, 3, ""),
-  x("Sałatka z kurczakiem", "1 miska", 300, 9, 5, 7, "sałata"),
-  x("Wrap z kurczakiem", "1 szt.", 250, 11, 22, 8, "tortilla"),
-  x("Zapiekanka", "1 szt.", 300, 9, 30, 10, "fast food"),
+  // ---------- carbs ----------
+  food("Chleb", SLICE(35), [v("pszenny", 8, 50, 2), v("żytni / razowy", 6, 45, 1.5), v("tostowy", 8, 48, 4), v("graham", 8, 46, 2)], "pieczywo"),
+  food("Bułka", SZT(55, [1, 2, 3], 1, 0.5), [v("kajzerka", 9, 56, 3), v("grahamka", 9, 48, 3), v("maślana / słodka", 8, 52, 8)], "pieczywo"),
+  food("Ryż", G([50, 100, 150, 200, 250, 300], 150), [v("ugotowany", 2.7, 28, 0.3), v("suchy (waga przed)", 7, 78, 1), v("brązowy ugotowany", 2.6, 23, 0.9)], "basmati jaśminowy"),
+  food("Makaron", G([50, 100, 150, 200, 250, 300], 200), [v("ugotowany", 5.5, 30, 1), v("suchy (waga przed)", 12, 71, 2), v("pełnoziarnisty ugotowany", 5.5, 26, 1)], "spaghetti penne"),
+  food("Kasza", G([50, 100, 150, 200, 250], 150), [v("gryczana ugotowana", 4, 20, 1), v("bulgur ugotowany", 3, 19, 0.3), v("jaglana ugotowana", 3.5, 23, 1), v("sucha (waga przed)", 12, 70, 2.5)], "kuskus"),
+  food("Ziemniaki", G([100, 150, 200, 250, 300, 400], 250), [v("gotowane", 2, 17, 0.1), v("pieczone z olejem", 2.5, 20, 5), v("puree", 2, 14, 4)], ""),
+  food("Frytki", G([100, 150, 200], 150), one(3.5, 35, 15), "fast food"),
+  food("Tortilla / wrap", SZT(60, [1, 2], 1, 1), [v("pszenna", 8, 50, 7), v("pełnoziarnista", 9, 45, 7)], "placek"),
+  food("Wafle ryżowe", SZT(9, [1, 2, 3, 4, 6], 3, 1), one(8, 81, 3), ""),
 
-  // Fruit & veg
-  x("Banan", "1 szt.", 120, 1.1, 23, 0.3, "owoc"),
-  x("Jabłko", "1 szt.", 180, 0.3, 12, 0.2, "owoc"),
-  x("Truskawki / borówki", "1 miseczka", 150, 0.8, 10, 0.4, "owoce"),
-  x("Warzywa (mix)", "1 porcja", 200, 2, 5, 0.3, "surówka sałatka brokuł"),
+  // ---------- dishes ----------
+  food("Pierogi", PCS(["szt.", "szt.", "szt."], 35, [4, 6, 8, 10, 12], 8, 1), [v("ruskie", 6, 28, 6), v("z mięsem", 9, 25, 8), v("z kapustą i grzybami", 5, 26, 5), v("z owocami", 5, 35, 3)], ""),
+  food("Spaghetti bolognese", PLATE(400), one(7, 17, 5), "makaron"),
+  food("Kurczak z ryżem i warzywami", PCS(["pudełko", "pudełka", "pudełek", "pudełka"], 400, [0.5, 1, 1.5, 2], 1, 0.5), one(11, 16, 3), "meal prep obiad"),
+  food("Zupa", PLATE(350), [v("pomidorowa / ogórkowa", 1.5, 7, 2), v("rosół z makaronem", 3, 5, 2), v("żurek z jajkiem i kiełbasą", 4, 6, 6), v("krem z dyni / warzyw", 1.5, 7, 3)], ""),
+  food("Bigos", PORTION(300), one(7, 6, 9), ""),
+  food("Gulasz", PORTION(250), one(13, 4, 9), "mięso sos"),
+  food("Pizza", SLICE_PIZZA, [v("margherita", 11, 30, 9), v("z salami / szynką", 12, 29, 11)], "fast food"),
+  food("Kebab", SZT(400, [1], 1, 0.5), [v("w bułce", 11, 20, 11), v("w tortilli", 11, 18, 10), v("box z frytkami", 10, 20, 12)], "fast food"),
+  food("Burger", SZT(250, [1, 2], 1, 1), [v("klasyczny", 13, 25, 13), v("z serem i bekonem", 14, 22, 17)], "fast food hamburger"),
+  food("Sushi", PCS(["kawałek", "kawałki", "kawałków"], 30, [4, 6, 8, 12, 16], 8, 1), [v("maki / nigiri", 6, 30, 3), v("futomaki / tempura", 6, 30, 7)], ""),
+  food("Sałatka", PCS(["miska", "miski", "misek", "miski"], 300, [0.5, 1, 1.5], 1, 0.5), [v("z kurczakiem", 9, 5, 7), v("grecka", 4, 5, 10), v("z tuńczykiem", 9, 5, 6)], "sałata"),
+  food("Zapiekanka", SZT(300, [0.5, 1], 1, 0.5), one(9, 30, 10), "fast food"),
 
-  // Add-ons
-  x("Pomidor", "1 szt.", 120, 0.9, 3.6, 0.2, "warzywa dodatek"),
-  x("Ogórek", "1 szt.", 150, 0.7, 3, 0.1, "warzywa dodatek"),
-  x("Papryka", "½ szt.", 80, 1, 5, 0.3, "warzywa dodatek"),
-  x("Cebula", "½ szt.", 50, 1.4, 9, 0.1, "warzywa dodatek"),
-  x("Granola", "3 łyżki", 30, 9, 62, 15, "musli płatki dodatek"),
-  x("Miód", "1 łyżeczka", 10, 0.3, 80, 0, "dodatek słodkie"),
-  x("Dżem", "1 łyżka", 20, 0.4, 50, 0.1, "dodatek słodkie"),
-  x("Ketchup", "1 łyżka", 15, 1.5, 24, 0.2, "sos dodatek"),
-  x("Majonez", "1 łyżka", 15, 1, 2, 75, "sos dodatek"),
-  x("Sos czosnkowy", "2 łyżki", 30, 2, 6, 20, "sos dodatek"),
-  x("Mozzarella", "½ kulki", 60, 18, 2, 18, "ser dodatek"),
-  x("Feta", "¼ kostki", 50, 15, 2, 21, "ser dodatek"),
-  x("Hummus", "2 łyżki", 40, 7, 14, 17, "dodatek pasta"),
-  x("Rodzynki / żurawina", "1 łyżka", 15, 2.5, 76, 0.5, "suszone owoce dodatek"),
-  x("Siemię / chia", "1 łyżka", 10, 18, 30, 33, "nasiona dodatek"),
+  // ---------- veg & fruit ----------
+  food("Pomidor", SZT(120, [0.5, 1, 2], 1), one(0.9, 3.6, 0.2), "warzywa dodatek"),
+  food("Ogórek", SZT(150, [0.5, 1, 2], 1), one(0.7, 3, 0.1), "warzywa dodatek"),
+  food("Papryka", SZT(160, [0.5, 1], 0.5), one(1, 5, 0.3), "warzywa dodatek"),
+  food("Cebula", SZT(100, [0.5, 1], 0.5), one(1.4, 9, 0.1), "warzywa dodatek"),
+  food("Warzywa", G([100, 150, 200, 300], 200), [v("mix / surówka", 2, 5, 0.3), v("brokuł / kalafior", 3, 4, 0.4), v("na patelnię z olejem", 2, 6, 4)], "surówka sałatka"),
+  food("Banan", SZT(120, [0.5, 1, 2], 1), one(1.1, 23, 0.3), "owoc"),
+  food("Jabłko", SZT(180, [0.5, 1, 2], 1), one(0.3, 12, 0.2), "owoc"),
+  food("Owoce jagodowe", G([50, 100, 150, 200], 100), [v("borówki", 0.7, 14, 0.3), v("truskawki / maliny", 0.8, 8, 0.4)], "truskawki maliny"),
+  food("Suszone owoce", SPOON(15), one(2.5, 76, 0.5), "rodzynki żurawina daktyle"),
 
-  // Fats & snacks
-  x("Masło orzechowe", "1 łyżka", 20, 25, 13, 50, ""),
-  x("Orzechy (mix)", "garść", 30, 18, 14, 55, "migdały"),
-  x("Awokado", "½ szt.", 75, 2, 9, 15, ""),
-  x("Oliwa / olej", "1 łyżka", 10, 0, 0, 100, "tłuszcz"),
-  x("Masło", "na 2 kromki", 10, 0.7, 0.7, 82, "tłuszcz"),
-  x("Baton proteinowy", "1 szt.", 60, 33, 35, 13, "białko"),
-  x("Czekolada", "½ tabliczki", 50, 7, 55, 32, "słodycze"),
-  x("Batonik (Snickers itp.)", "1 szt.", 50, 9, 60, 23, "słodycze"),
-  x("Chipsy", "½ paczki", 70, 6, 52, 33, "przekąska"),
-  x("Lody", "2 gałki", 120, 3.5, 24, 10, "słodycze deser"),
-  x("Ciasto (sernik, szarlotka)", "1 kawałek", 120, 6, 35, 15, "deser"),
+  // ---------- add-ons, fats & sweets ----------
+  food("Miód", TSP(10), one(0.3, 80, 0), "dodatek słodkie"),
+  food("Dżem", TSP(12), [v("zwykły", 0.4, 50, 0.1), v("niskosłodzony", 0.4, 35, 0.1)], "dodatek słodkie"),
+  food("Masło", TSP(5, 2), one(0.7, 0.7, 82), "tłuszcz"),
+  food("Oliwa / olej", SPOON(10), one(0, 0, 100), "tłuszcz"),
+  food("Masło orzechowe", TSP(10, 2), one(25, 13, 50), ""),
+  food("Orzechy", G([10, 20, 30, 50], 30), [v("mix", 18, 14, 55), v("migdały", 21, 10, 50), v("włoskie", 15, 7, 65)], "migdały"),
+  food("Nasiona", SPOON(10), [v("chia", 17, 42, 31), v("siemię lniane", 18, 29, 42), v("słonecznik / pestki dyni", 22, 15, 50)], "dodatek"),
+  food("Awokado", SZT(150, [0.5, 1], 0.5), one(2, 9, 15), ""),
+  food("Hummus", SPOON(20, 2), one(7, 14, 17), "pasta dodatek"),
+  food("Sos", SPOON(15, 2), [v("ketchup", 1.5, 24, 0.2), v("majonez", 1, 2, 75), v("majonez light", 1, 6, 30), v("czosnkowy", 2, 6, 20), v("musztarda", 5, 6, 4)], "dodatek"),
+  food("Baton proteinowy", SZT(60, [1, 2], 1, 0.5), one(33, 35, 13), "białko"),
+  food("Czekolada", PCS(["kostka", "kostki", "kostek", "kostki"], 5, [2, 4, 6, 10, 20], 4, 1), [v("mleczna", 7, 57, 31), v("gorzka 70%", 9, 34, 42)], "słodycze"),
+  food("Batonik", SZT(50, [1, 2], 1, 0.5), one(9, 60, 23), "słodycze snickers mars"),
+  food("Chipsy", G([30, 50, 70, 140], 50), one(6, 52, 33), "przekąska"),
+  food("Lody", PCS(["gałka", "gałki", "gałek", "gałki"], 60, [1, 2, 3], 2, 1), one(3.5, 24, 10), "słodycze deser"),
+  food("Ciasto", PCS(["kawałek", "kawałki", "kawałków", "kawałka"], 120, [0.5, 1, 2], 1, 0.5), [v("sernik", 7, 26, 15), v("szarlotka", 3, 38, 12), v("czekoladowe", 5, 45, 20)], "deser"),
 
-  // Drinks
-  x("Sok owocowy", "1 szklanka", 250, 0.5, 10, 0, "napój"),
-  x("Cola / napój słodzony", "puszka", 330, 0, 10.6, 0, "napój"),
-  x("Piwo", "0,5 l", 500, 0.5, 3.5, 0, "alkohol"),
-  x("Kawa z mlekiem", "1 kubek", 250, 1.5, 2, 1, "latte cappuccino"),
+  // ---------- drinks ----------
+  food("Sok", ML([200, 250, 330, 500], 250), [v("pomarańczowy / jabłkowy", 0.5, 10, 0), v("warzywny", 1, 5, 0)], "napój"),
+  food("Napój słodzony", ML([250, 330, 500], 330), [v("cola / oranżada", 0, 10.6, 0), v("zero", 0, 0, 0)], "cola napój"),
+  food("Piwo", ML([330, 500], 500), [v("jasne", 0.5, 3.5, 0), v("bezalkoholowe", 0.4, 5, 0)], "alkohol"),
+  food("Kawa z mlekiem", ML([150, 250, 350, 450], 250), [v("latte / cappuccino", 3, 4.5, 2), v("z odrobiną mleka", 0.6, 0.9, 0.5)], "latte cappuccino"),
 ];
 
 export type Amount = { p: number; c: number; f: number; kcal: number };
 
-export function forGrams(item: { p: number; c: number; f: number }, grams: number): Amount {
+export function forGrams(m: Macros100, grams: number): Amount {
   const k = grams / 100;
-  const p = Math.round(item.p * k);
-  const c = Math.round(item.c * k);
-  const f = Math.round(item.f * k);
-  return { p, c, f, kcal: Math.round((item.p * 4 + item.c * 4 + item.f * 9) * k) };
+  return {
+    p: Math.round(m.p * k),
+    c: Math.round(m.c * k),
+    f: Math.round(m.f * k),
+    kcal: Math.round((m.p * 4 + m.c * 4 + m.f * 9) * k),
+  };
+}
+
+/** "3 jajka", "1,5 talerza", "150 g". */
+export function formatQty(unit: Unit, qty: number): string {
+  const num = String(qty).replace(".", ",");
+  let form: string;
+  if (!Number.isInteger(qty)) form = unit.forms[3] ?? unit.forms[1];
+  else if (qty === 1) form = unit.forms[0];
+  else if (qty % 10 >= 2 && qty % 10 <= 4 && (qty % 100 < 12 || qty % 100 > 14)) form = unit.forms[1];
+  else form = unit.forms[2];
+  if (qty === 0.5 && unit.grams !== 1) return `½ ${unit.forms[3] ?? unit.forms[1]}`;
+  return `${num} ${form}`;
+}
+
+export function itemName(item: FoodItem, variant: Variant, qty: number): string {
+  return `${item.name}${variant.label ? ` ${variant.label}` : ""} — ${formatQty(item.unit, qty)}`;
 }
 
 const fold = (s: string) =>
@@ -149,7 +196,7 @@ export function searchFoods(query: string): FoodItem[] {
   const words = fold(query).split(/\s+/).filter(Boolean);
   if (!words.length) return FOOD_DB;
   return FOOD_DB.filter((it) => {
-    const hay = fold(`${it.name} ${it.tags ?? ""}`);
+    const hay = fold(`${it.name} ${it.tags ?? ""} ${it.variants.map((x) => x.label).join(" ")}`);
     return words.every((w) => hay.includes(w));
   });
 }
