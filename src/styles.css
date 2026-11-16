@@ -1351,14 +1351,14 @@ textarea:focus {
 
 /* ---------- nutrition ---------- */
 
-.kind-chips .chip.kind {
+.chip.kind {
   border-style: solid;
   border-color: var(--line);
   background: var(--surface);
   color: var(--muted);
 }
 
-.kind-chips .chip.kind.on {
+.chip.kind.on {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
@@ -1590,4 +1590,141 @@ textarea:focus {
 .option.selected {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* ---------- meal log ---------- */
+
+.day-nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.day-nav-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.kcal-value.eaten {
+  color: var(--accent);
+}
+
+.kcal-sep {
+  font-size: 2rem;
+  color: var(--muted);
+}
+
+.kcal .kcal-value + .kcal-sep + .kcal-value {
+  font-size: 1.6rem;
+  color: var(--muted);
+}
+
+.macro-eaten {
+  color: var(--m);
+}
+
+.macro-fill.over {
+  background: var(--error);
+}
+
+.add-meal-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border-style: dashed;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.meal-row .icon-btn {
+  background: none;
+  color: var(--muted);
+}
+
+.wm-row.sel {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.pick-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.pick-list li + li {
+  border-top: 1px solid var(--soft);
+}
+
+.pick-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.pick-list button > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pick-list svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+}
+
+.pick-title {
+  font-size: 1.2rem;
+}
+
+.meal-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  background: var(--soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.meal-preview strong {
+  font-size: 1.3rem;
+}
+
+.macro-g {
+  white-space: nowrap;
+}
+
+.macro-g small {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
 }

@@ -43,4 +43,20 @@ export type DayLog = {
   /** The plan said gym/run, but it was dropped for this day. */
   skipGym?: boolean;
   skipRun?: boolean;
+  /** What was eaten that day. */
+  meals?: Meal[];
+};
+
+/** One logged meal or snack; macros in grams. */
+export type Meal = {
+  id: string;
+  name: string;
+  /** "HH:MM", when it was added. */
+  time: string;
+  kcal: number;
+  p: number;
+  c: number;
+  f: number;
+  /** For items from the food list: grams eaten. */
+  grams?: number;
 };

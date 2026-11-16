@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { formatShort, weekDays, WEEKDAYS_SHORT } from "../lib/dates";
+import { addDays, formatShort, relativeLabel, weekDays, WEEKDAYS_SHORT } from "../lib/dates";
 import {
   ACTIVITY,
   DAY_KINDS,
@@ -14,6 +14,8 @@ import {
   type NutritionProfile,
 } from "../lib/nutrition";
 import { dayStatus } from "../lib/plan";
+import type { Meal } from "../lib/types";
+import { MealForm } from "./MealForm";
 import { Icon, numText, parseNum, SettingsButton, Sheet, useApp } from "./common";
 
 function useDayKind() {
@@ -26,7 +28,7 @@ function useDayKind() {
 }
 
 export function Nutrition() {
-  const { plan, savePlan } = useApp();
+  const { plan, savePlan, selected } = useApp();
   const [editing, setEditing] = useState(false);
   const profile = plan.nutrition;
 
@@ -46,7 +48,7 @@ export function Nutrition() {
       </header>
 
       {profile ? (
-        <Targets profile={profile} onEdit={() => setEditing(true)} />
+        <Targets key={selected} profile={profile} onEdit={() => setEditing(true)} />
       ) : (
         <>
           <p className="muted">
@@ -68,44 +70,114 @@ export function Nutrition() {
 }
 
 function Targets({ profile, onEdit }: { profile: NutritionProfile; onEdit: () => void }) {
-  const { today } = useApp();
+  const { today, selected, select, byDate, saveDay } = useApp();
   const kindOf = useDayKind();
-  const todayInfo = kindOf(today);
-  const [kind, setKind] = useState<DayKind>(todayInfo.kind);
-  const m = dayMacros(profile, kind, kind === todayInfo.kind ? todayInfo.km : null);
+  const dayInfo = kindOf(selected);
+  const [kind, setKind] = useState<DayKind>(dayInfo.kind);
+  const [adding, setAdding] = useState(false);
+  const m = dayMacros(profile, kind, kind === dayInfo.kind ? dayInfo.km : null);
   const tips = DAY_TIPS[kind];
   const perMeal = Math.round(m.protein / 4 / 5) * 5;
 
-  const share = (g: number, perG: number) => Math.round(((g * perG) / m.kcal) * 100);
+  const log = byDate.get(selected);
+  const meals = log?.meals ?? [];
+  const eaten = meals.reduce((a, x) => ({ kcal: a.kcal + x.kcal, p: a.p + x.p, c: a.c + x.c, f: a.f + x.f }), { kcal: 0, p: 0, c: 0, f: 0 });
+  const left = m.kcal - eaten.kcal;
+
+  const setMeals = (next: Meal[]) => saveDay({ ...(log ?? { date: selected }), meals: next });
 
   return (
     <>
+      <div className="day-nav">
+        <button className="icon-btn" onClick={() => select(addDays(selected, -1))} aria-label="Poprzedni dzień">
+          <Icon name="back" size={18} />
+        </button>
+        <div className="day-nav-label">
+          <strong>{relativeLabel(selected, today)}</strong>
+          <span className="muted small">{formatShort(selected)}</span>
+        </div>
+        <button className="icon-btn" onClick={() => select(addDays(selected, 1))} aria-label="Następny dzień">
+          <Icon name="chevron" size={18} />
+        </button>
+      </div>
+
       <div className="chips kind-chips" role="radiogroup" aria-label="Rodzaj dnia">
         {(Object.keys(DAY_KINDS) as DayKind[]).map((k) => (
           <button key={k} role="radio" aria-checked={kind === k} className={`chip kind ${kind === k ? "on" : ""}`} onClick={() => setKind(k)}>
             {DAY_KINDS[k]}
-            {k === todayInfo.kind && <span className="kind-today">dziś</span>}
+            {k === dayInfo.kind && <span className="kind-today">{selected === today ? "dziś" : "w planie"}</span>}
           </button>
         ))}
       </div>
 
       <section className="card macro-card">
         <div className="kcal">
+          {meals.length > 0 && <span className="kcal-value eaten">{eaten.kcal.toLocaleString("pl-PL")}</span>}
+          {meals.length > 0 && <span className="kcal-sep">/</span>}
           <span className="kcal-value">{m.kcal.toLocaleString("pl-PL")}</span>
           <span className="muted">kcal</span>
         </div>
         <p className="muted small">
-          {kind === "rest" ? "Bez treningu" : `W tym ok. ${m.training} kcal na trening`} · cel: {GOALS[profile.goal].label.toLowerCase()}
+          {meals.length > 0
+            ? left >= 0
+              ? `Zostało ${left.toLocaleString("pl-PL")} kcal`
+              : `${(-left).toLocaleString("pl-PL")} kcal ponad cel`
+            : kind === "rest"
+              ? "Bez treningu"
+              : `W tym ok. ${m.training} kcal na trening`}{" "}
+          · cel: {GOALS[profile.goal].label.toLowerCase()}
         </p>
         <div className="macros">
-          <Macro label="Białko" grams={m.protein} pct={share(m.protein, 4)} cls="p" />
-          <Macro label="Węglowodany" grams={m.carbs} pct={share(m.carbs, 4)} cls="c" />
-          <Macro label="Tłuszcze" grams={m.fat} pct={share(m.fat, 9)} cls="f" />
+          <Macro label="Białko" target={m.protein} eaten={eaten.p} show={meals.length > 0} cls="p" />
+          <Macro label="Węglowodany" target={m.carbs} eaten={eaten.c} show={meals.length > 0} cls="c" />
+          <Macro label="Tłuszcze" target={m.fat} eaten={eaten.f} show={meals.length > 0} cls="f" />
         </div>
-        <p className="small">
-          Białko najłatwiej dobić w 4 posiłkach po ok. <strong>{perMeal}&nbsp;g</strong>.
-        </p>
+        {meals.length === 0 && (
+          <p className="small">
+            Białko najłatwiej dobić w 4 posiłkach po ok. <strong>{perMeal}&nbsp;g</strong>.
+          </p>
+        )}
       </section>
+
+      <div className="section-head">
+        <h2>Posiłki</h2>
+        <button className="link" onClick={() => setAdding(true)}>
+          + Dodaj
+        </button>
+      </div>
+      {meals.length === 0 ? (
+        <button className="card add-meal-empty" onClick={() => setAdding(true)}>
+          <Icon name="plus" size={20} />
+          <span>Dodaj pierwszy posiłek {selected === today ? "dziś" : "tego dnia"}</span>
+        </button>
+      ) : (
+        <section className="card list meals">
+          {meals.map((meal) => (
+            <div key={meal.id} className="list-row meal-row">
+              <div>
+                <p className="list-title">{meal.name}</p>
+                <p className="muted small">
+                  {meal.time} · {meal.kcal} kcal · B {meal.p} · W {meal.c} · T {meal.f}
+                </p>
+              </div>
+              <button className="icon-btn sm" onClick={() => setMeals(meals.filter((x) => x.id !== meal.id))} aria-label={`Usuń ${meal.name}`}>
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {adding && (
+        <Sheet title="Dodaj posiłek" onClose={() => setAdding(false)}>
+          <MealForm
+            onAdd={(meal) => {
+              setMeals([...meals, meal]);
+              setAdding(false);
+            }}
+          />
+        </Sheet>
+      )}
 
       <section className="card tips">
         <h2>{tips.title}</h2>
@@ -120,11 +192,11 @@ function Targets({ profile, onEdit }: { profile: NutritionProfile; onEdit: () =>
         <h2>Ten tydzień</h2>
       </div>
       <section className="card week-macros">
-        {weekDays(today).map((key, i) => {
+        {weekDays(selected).map((key, i) => {
           const info = kindOf(key);
           const dm = dayMacros(profile, info.kind, info.km);
           return (
-            <button key={key} className={`wm-row ${key === today ? "today" : ""}`} onClick={() => setKind(info.kind)}>
+            <button key={key} className={`wm-row ${key === today ? "today" : ""} ${key === selected ? "sel" : ""}`} onClick={() => select(key)}>
               <span className="wm-day">
                 {WEEKDAYS_SHORT[i]} <span className="muted small">{formatShort(key)}</span>
               </span>
@@ -155,17 +227,22 @@ function Targets({ profile, onEdit }: { profile: NutritionProfile; onEdit: () =>
   );
 }
 
-function Macro({ label, grams, pct, cls }: { label: string; grams: number; pct: number; cls: string }) {
+function Macro({ label, target, eaten, show, cls }: { label: string; target: number; eaten: number; show: boolean; cls: string }) {
+  const pct = target > 0 ? Math.round((eaten / target) * 100) : 0;
+  const rest = target - eaten;
   return (
     <div className="macro">
       <div className="macro-head">
         <span className="small">{label}</span>
-        <span className="macro-g">{grams} g</span>
+        <span className="macro-g">
+          {show ? <span className="macro-eaten">{eaten}</span> : target}
+          <small>{show ? ` / ${target} g` : " g"}</small>
+        </span>
       </div>
       <div className="macro-track">
-        <div className={`macro-fill ${cls}`} style={{ width: `${Math.min(100, pct)}%` }} />
+        <div className={`macro-fill ${cls} ${pct > 110 ? "over" : ""}`} style={{ width: `${show ? Math.min(100, pct) : 100}%`, opacity: show ? 1 : 0.35 }} />
       </div>
-      <span className="muted small">{pct}% kcal</span>
+      <span className="muted small">{show ? (rest >= 0 ? `zostało ${rest} g` : `+${-rest} g`) : "cel na dzień"}</span>
     </div>
   );
 }

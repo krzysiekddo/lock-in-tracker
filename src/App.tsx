@@ -105,7 +105,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 function isEmpty(day: DayLog) {
-  return !day.run && !day.gym && !day.skipGym && !day.skipRun;
+  return !day.run && !day.gym && !day.skipGym && !day.skipRun && !day.meals?.length;
 }
 
 function Home({ db, user }: { db: Firestore; user: User }) {
