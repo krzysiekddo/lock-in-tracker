@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { formatQty, forGrams, itemName, matchVariant, searchFoods, type FoodItem } from "../lib/foods";
+import { foodsByName, formatQty, forGrams, itemName, matchVariant, searchFoods, type FoodItem } from "../lib/foods";
 import { uid } from "../lib/plan";
 import type { Meal, MealItem } from "../lib/types";
 import { Icon, numText, parseNum, useApp } from "./common";
@@ -49,8 +49,12 @@ export function MealForm({ onAdd }: { onAdd: (meal: Meal) => void }) {
     });
   }
 
-  function addPart(item: MealItem) {
+  // Add-ons suggested by the last thing put on the plate (e.g. pinsa → pasata, cheese…).
+  const [pairs, setPairs] = useState<string[]>([]);
+
+  function addPart(item: MealItem, next?: string[]) {
     setItems((xs) => [...xs, item]);
+    if (next?.length) setPairs(next);
     setRound((r) => r + 1);
   }
 
@@ -103,6 +107,7 @@ export function MealForm({ onAdd }: { onAdd: (meal: Meal) => void }) {
           hasItems={items.length > 0}
           onSave={save}
           onAddPart={addPart}
+          pairs={pairs}
           onRepeat={(m) => onAdd({ ...m, id: uid(), time: now() })}
         />
       ) : (
@@ -112,7 +117,7 @@ export function MealForm({ onAdd }: { onAdd: (meal: Meal) => void }) {
   );
 }
 
-type PartProps = { hasItems: boolean; onSave: (item: MealItem) => void; onAddPart: (item: MealItem) => void };
+type PartProps = { hasItems: boolean; onSave: (item: MealItem) => void; onAddPart: (item: MealItem, pairs?: string[]) => void };
 
 /** "Save" and "add another part" buttons shared by both pickers. */
 function PartActions({ item, hasItems, onSave, onAddPart }: PartProps & { item: MealItem | null }) {
@@ -147,13 +152,42 @@ function useRecent(): Meal[] {
   }, [days]);
 }
 
-function FromList({ hasItems, onSave, onAddPart, onRepeat }: PartProps & { onRepeat: (meal: Meal) => void }) {
+function FromList({ hasItems, onSave, onAddPart, onRepeat, pairs }: PartProps & { onRepeat: (meal: Meal) => void; pairs: string[] }) {
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<FoodItem | null>(null);
   const recent = useRecent();
   const results = useMemo(() => searchFoods(query), [query]);
 
-  if (picked) return <Portion item={picked} onBack={() => setPicked(null)} hasItems={hasItems} onSave={onSave} onAddPart={onAddPart} />;
+  const suggested = useMemo(() => (hasItems ? foodsByName(pairs) : []), [hasItems, pairs]);
+
+  if (picked)
+    return (
+      <Portion
+        item={picked}
+        onBack={() => setPicked(null)}
+        hasItems={hasItems}
+        onSave={onSave}
+        onAddPart={(mi) => onAddPart(mi, picked.pairs)}
+      />
+    );
+
+  const row = (it: FoodItem) => {
+    const dv = it.variants[it.defVariant ?? 0];
+    const a = forGrams(dv, it.unit.grams * it.unit.def);
+    return (
+      <li key={it.name}>
+        <button onClick={() => setPicked({ ...it, defVariant: matchVariant(it, query) ?? it.defVariant })}>
+          <span>
+            <span className="list-title">{it.name}</span>
+            <span className="muted small">
+              {it.variants.length > 1 ? it.variants.map((x) => x.label).join(" · ") : `${formatQty(it.unit, it.unit.def)} · ${a.kcal} kcal`}
+            </span>
+          </span>
+          <Icon name="chevron" size={18} />
+        </button>
+      </li>
+    );
+  };
 
   return (
     <>
@@ -186,31 +220,20 @@ function FromList({ hasItems, onSave, onAddPart, onRepeat }: PartProps & { onRep
         </div>
       )}
 
+      {!query && suggested.length > 0 && (
+        <div className="pick-group">
+          <p className="muted small">Pasuje do tego</p>
+          <ul className="pick-list">{suggested.map(row)}</ul>
+        </div>
+      )}
+
       <div className="pick-group">
-        {!query && <p className="muted small">Produkty i dania</p>}
+        {!query && <p className="muted small">{suggested.length ? "Wszystkie produkty" : "Produkty i dania"}</p>}
         {results.length === 0 ? (
           <p className="muted small">Nie ma tego na liście. Wybierz coś podobnego albo przejdź do „Wpisz makro”.</p>
         ) : (
           <ul className="pick-list">
-            {results.map((it) => {
-              const dv = it.variants[it.defVariant ?? 0];
-              const a = forGrams(dv, it.unit.grams * it.unit.def);
-              return (
-                <li key={it.name}>
-                  <button onClick={() => setPicked({ ...it, defVariant: matchVariant(it, query) ?? it.defVariant })}>
-                    <span>
-                      <span className="list-title">{it.name}</span>
-                      <span className="muted small">
-                        {it.variants.length > 1
-                          ? it.variants.map((x) => x.label).join(" · ")
-                          : `${formatQty(it.unit, it.unit.def)} · ${a.kcal} kcal`}
-                      </span>
-                    </span>
-                    <Icon name="chevron" size={18} />
-                  </button>
-                </li>
-              );
-            })}
+            {results.map(row)}
           </ul>
         )}
       </div>

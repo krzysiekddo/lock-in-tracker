@@ -27,6 +27,8 @@ export type FoodItem = {
   variants: Variant[];
   /** Index of the default variant. */
   defVariant?: number;
+  /** Names of items that usually go with this one, offered right after it is added. */
+  pairs?: string[];
 };
 
 // ---- units ----
@@ -279,7 +281,43 @@ const EXTRA: FoodItem[] = [
   food("Drink z colą / sokiem", ML([250, 330], 250), one(0, 9, 0, 85), "alkohol"),
 ];
 
-export const FOOD_DB: FoodItem[] = [...BASE, ...EXTRA];
+const PIZZA: FoodItem[] = [
+  food("Pinsa (spód)", PCS(["spód", "spody", "spodów", "spodu"], 230, [0.5, 1, 2], 1, 0.5), one(8, 50, 4), "pinsa romana pizza ciasto"),
+  food("Spód do pizzy", PCS(["spód", "spody", "spodów", "spodu"], 260, [0.5, 1], 1, 0.5), [v("cienki", 8, 48, 5), v("gruby / pan", 7, 45, 7)], "pizza ciasto"),
+  food("Pinsa z pizzerii", SZT(380, [0.5, 1], 1, 0.5), [v("margherita", 10, 30, 8), v("z szynką", 11, 28, 9), v("z salami / pepperoni", 11, 27, 12), v("z prosciutto i rukolą", 12, 28, 9)], "pinsa pizza fast food"),
+  food("Sos pomidorowy", PCS(["łyżka", "łyżki", "łyżek", "łyżki"], 20, [2, 3, 4, 6], 4, 1), [v("pasata", 1.3, 5, 0.2), v("sos do pizzy", 1.5, 8, 1.5)], "pomidory passata dodatek pizza pinsa"),
+  food("Ser tarty", G([25, 50, 75, 100, 125], 50), [v("mozzarella", 22, 2, 20), v("gouda / edam", 25, 0, 28), v("mozzarella light", 24, 2, 11)], "ser do pizzy dodatek pinsa"),
+  food("Wędlina na pizzę", G([20, 40, 60, 80, 100], 40), [v("szynka", 18, 2, 5), v("salami / pepperoni", 22, 1, 35), v("prosciutto / szynka parmeńska", 26, 0, 18), v("boczek", 14, 0, 40)], "szynka salami pizza pinsa dodatek"),
+  food("Burrata", G([50, 100, 125], 125), one(11, 1, 24), "ser pizza pinsa dodatek"),
+  food("Oliwki", G([10, 20, 30, 50], 20), one(1, 4, 15), "dodatek pizza pinsa"),
+  food("Rukola", G([10, 20, 30], 20), one(2.6, 3.7, 0.7), "sałata dodatek pizza pinsa"),
+  food("Pomidorki koktajlowe", PIECE(["szt.", "szt.", "szt."], 15, [3, 5, 8, 10], 5), one(0.9, 3.9, 0.2), "pomidor dodatek pizza pinsa"),
+];
+
+export const FOOD_DB: FoodItem[] = [...BASE, ...EXTRA, ...PIZZA];
+
+// Typical add-ons, offered as soon as the main item is on the plate.
+const PAIRS: Record<string, string[]> = {
+  "Pinsa (spód)": ["Sos pomidorowy", "Ser tarty", "Mozzarella", "Wędlina na pizzę", "Burrata", "Pieczarki", "Oliwki", "Rukola", "Pomidorki koktajlowe", "Kukurydza / groszek", "Cebula", "Papryka", "Oliwa / olej"],
+  "Spód do pizzy": ["Sos pomidorowy", "Ser tarty", "Mozzarella", "Wędlina na pizzę", "Pieczarki", "Oliwki", "Kukurydza / groszek", "Cebula", "Papryka", "Ananas"],
+  Jogurt: ["Granola / musli", "Owoce jagodowe", "Banan", "Miód", "Nasiona", "Orzechy"],
+  Skyr: ["Granola / musli", "Owoce jagodowe", "Banan", "Miód", "Masło orzechowe"],
+  Owsianka: ["Banan", "Owoce jagodowe", "Masło orzechowe", "Odżywka białkowa", "Orzechy", "Miód"],
+  "Płatki owsiane": ["Mleko", "Jogurt", "Banan", "Owoce jagodowe", "Masło orzechowe"],
+  Jajecznica: ["Pomidor", "Ogórek", "Bułka", "Chleb", "Masło"],
+  "Jajka sadzone": ["Chleb", "Bułka", "Pomidor", "Ogórek"],
+  Omlet: ["Ser żółty", "Wędlina", "Pomidor", "Warzywa"],
+  Twaróg: ["Pomidor", "Ogórek", "Chleb", "Bułka", "Miód"],
+  Naleśniki: ["Owoce jagodowe", "Śmietana", "Nutella / krem czekoladowy"],
+  "Pierś z kurczaka": ["Ryż", "Ziemniaki", "Makaron", "Warzywa", "Kasza"],
+  "Kotlet schabowy": ["Ziemniaki", "Warzywa"],
+  Pierogi: ["Śmietana", "Cebula"],
+};
+for (const it of FOOD_DB) if (PAIRS[it.name]) it.pairs = PAIRS[it.name].filter((n) => FOOD_DB.some((x) => x.name === n));
+
+export function foodsByName(names: string[]): FoodItem[] {
+  return names.map((n) => FOOD_DB.find((x) => x.name === n)).filter((x): x is FoodItem => !!x);
+}
 
 export type Amount = { p: number; c: number; f: number; kcal: number };
 
@@ -306,7 +344,7 @@ export function formatQty(unit: Unit, qty: number): string {
 }
 
 export function itemName(item: FoodItem, variant: Variant, qty: number): string {
-  return `${item.name}${variant.label ? ` ${variant.label}` : ""} — ${formatQty(item.unit, qty)}`;
+  return `${item.name}${variant.label ? ` (${variant.label})` : ""} — ${formatQty(item.unit, qty)}`;
 }
 
 const fold = (s: string) =>
