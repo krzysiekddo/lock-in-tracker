@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { formatQty, forGrams, itemName, searchFoods, type FoodItem } from "../lib/foods";
+import { formatQty, forGrams, itemName, matchVariant, searchFoods, type FoodItem } from "../lib/foods";
 import { uid } from "../lib/plan";
 import type { Meal, MealItem } from "../lib/types";
 import { Icon, numText, parseNum, useApp } from "./common";
@@ -197,7 +197,7 @@ function FromList({ hasItems, onSave, onAddPart, onRepeat }: PartProps & { onRep
               const a = forGrams(dv, it.unit.grams * it.unit.def);
               return (
                 <li key={it.name}>
-                  <button onClick={() => setPicked(it)}>
+                  <button onClick={() => setPicked({ ...it, defVariant: matchVariant(it, query) ?? it.defVariant })}>
                     <span>
                       <span className="list-title">{it.name}</span>
                       <span className="muted small">
