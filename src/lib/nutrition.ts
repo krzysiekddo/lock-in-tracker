@@ -4,7 +4,7 @@
 
 export type Sex = "m" | "f";
 export type Activity = "low" | "medium" | "high";
-export type Goal = "cut" | "maintain" | "bulk";
+export type Goal = "cut" | "recomp" | "maintain" | "bulk";
 
 export type NutritionProfile = {
   sex: Sex;
@@ -18,6 +18,8 @@ export type NutritionProfile = {
   runKm: number;
   /** Typical gym session length. */
   gymMin: number;
+  /** Manual shift of every day's calories (kcal, can be negative). */
+  kcalAdjust?: number;
 };
 
 export type DayKind = "rest" | "gym" | "run" | "both";
@@ -32,6 +34,7 @@ export const ACTIVITY: Record<Activity, { label: string; hint: string; factor: n
 
 export const GOALS: Record<Goal, { label: string; hint: string; kcal: number }> = {
   cut: { label: "Redukcja", hint: "Spokojnie w dół, ok. 0,5 kg na tydzień", kcal: -400 },
+  recomp: { label: "Rekompozycja", hint: "Waga podobna, mniej tłuszczu, więcej mięśni — lekki deficyt i dużo białka", kcal: -250 },
   maintain: { label: "Utrzymanie", hint: "Ta sama waga, lepsza forma", kcal: 0 },
   bulk: { label: "Masa", hint: "Powoli w górę, bez zbędnego tłuszczu", kcal: 250 },
 };
@@ -63,9 +66,9 @@ export function dayMacros(p: NutritionProfile, kind: DayKind, km?: number | null
   const base = bmr(p) * ACTIVITY[p.activity].factor;
   const training = (kind === "gym" || kind === "both" ? gymKcal(p) : 0) + (kind === "run" || kind === "both" ? runKcal(p, km) : 0);
   // Never go far below what the body burns at rest, whatever the goal.
-  const kcal = Math.max(Math.round(bmr(p) * 1.1), Math.round(base + training + GOALS[p.goal].kcal));
+  const kcal = Math.max(Math.round(bmr(p) * 1.1), Math.round(base + training + GOALS[p.goal].kcal + (p.kcalAdjust ?? 0)));
 
-  const protein = Math.round(p.weightKg * (p.goal === "cut" ? 2.2 : 1.8));
+  const protein = Math.round(p.weightKg * (p.goal === "cut" || p.goal === "recomp" ? 2.2 : 1.8));
   const fat = Math.round(Math.max(p.weightKg * 0.8, (kcal * 0.25) / 9));
   const carbs = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
   return { kcal: round5(kcal), protein, carbs, fat, training };
@@ -156,6 +159,9 @@ export const FOODS: Record<"protein" | "carbs" | "fat", { title: string; items: 
     ],
   },
 };
+
+export const ADJUST_MIN = -800;
+export const ADJUST_MAX = 500;
 
 export function validProfile(p: Partial<NutritionProfile>): p is NutritionProfile {
   return (

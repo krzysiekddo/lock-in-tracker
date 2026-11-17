@@ -1794,3 +1794,42 @@ textarea:focus {
   text-align: center;
   padding-left: 14px;
 }
+
+.inline-link {
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.adjust-value {
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.adjust-preview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.adjust-preview > span {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--soft);
+  min-width: 0;
+}
+
+.adjust-preview > span .small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adjust-preview strong {
+  font-variant-numeric: tabular-nums;
+}

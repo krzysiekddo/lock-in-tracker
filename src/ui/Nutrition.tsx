@@ -2,6 +2,9 @@ import { useState } from "react";
 import { addDays, formatShort, relativeLabel, weekDays, WEEKDAYS_SHORT } from "../lib/dates";
 import {
   ACTIVITY,
+  ADJUST_MAX,
+  ADJUST_MIN,
+  bmr,
   DAY_KINDS,
   DAY_TIPS,
   dayMacros,
@@ -125,7 +128,11 @@ function Targets({ profile, onEdit }: { profile: NutritionProfile; onEdit: () =>
             : kind === "rest"
               ? "Bez treningu"
               : `W tym ok. ${m.training} kcal na trening`}{" "}
-          · cel: {GOALS[profile.goal].label.toLowerCase()}
+          ·{" "}
+          <button className="link inline-link" onClick={onEdit}>
+            cel: {GOALS[profile.goal].label.toLowerCase()}
+            {profile.kcalAdjust ? ` ${profile.kcalAdjust > 0 ? "+" : "−"}${Math.abs(profile.kcalAdjust)} kcal` : ""}
+          </button>
         </p>
         <div className="macros">
           <Macro label="Białko" target={m.protein} eaten={eaten.p} show={meals.length > 0} cls="p" />
@@ -312,6 +319,49 @@ function NumField({
   );
 }
 
+/** Shifts all days up or down and shows what each kind of day comes out at. */
+function CalorieAdjust({ p, onChange }: { p: Partial<NutritionProfile>; onChange: (n: number) => void }) {
+  const adj = p.kcalAdjust ?? 0;
+  const step = (d: number) => onChange(Math.min(ADJUST_MAX, Math.max(ADJUST_MIN, adj + d)));
+  const full = validProfile(p) ? p : null;
+  const floor = full ? Math.round(bmr(full) * 1.1) : 0;
+
+  return (
+    <div className="field" role="group" aria-label="Korekta kalorii">
+      <span>Korekta kalorii</span>
+      <div className="stepper">
+        <button className="icon-btn" onClick={() => step(-50)} disabled={adj <= ADJUST_MIN} aria-label="Mniej kalorii">
+          <Icon name="minus" size={18} />
+        </button>
+        <span className="adjust-value">
+          {adj === 0 ? "bez zmian" : `${adj > 0 ? "+" : "−"}${Math.abs(adj)} kcal dziennie`}
+        </span>
+        <button className="icon-btn" onClick={() => step(50)} disabled={adj >= ADJUST_MAX} aria-label="Więcej kalorii">
+          <Icon name="plus" size={18} />
+        </button>
+      </div>
+      {full ? (
+        <>
+          <div className="adjust-preview">
+            {(Object.keys(DAY_KINDS) as DayKind[]).map((k) => (
+              <span key={k}>
+                <span className="muted small">{k === "both" ? "Oba" : DAY_KINDS[k]}</span>
+                <strong>{dayMacros(full, k).kcal.toLocaleString("pl-PL")}</strong>
+              </span>
+            ))}
+          </div>
+          {dayMacros(full, "rest").kcal <= floor + 5 && (
+            <span className="muted small">Dzień wolny nie zejdzie niżej — to bezpieczne minimum dla Twoich danych.</span>
+          )}
+        </>
+      ) : (
+        <span className="muted small">Uzupełnij dane wyżej, a pokażę, ile wyjdzie w każdy rodzaj dnia.</span>
+      )}
+      <span className="muted small">Za dużo do zjedzenia? Zmniejsz o 100–300 kcal i sprawdź wagę po 2 tygodniach.</span>
+    </div>
+  );
+}
+
 function ProfileForm({ initial, onSave }: { initial?: NutritionProfile; onSave: (p: NutritionProfile) => void }) {
   const [p, setP] = useState<Partial<NutritionProfile>>(initial ?? { activity: "medium", goal: "maintain", runKm: 5, gymMin: 60 });
   const set = (patch: Partial<NutritionProfile>) => setP((x) => ({ ...x, ...patch }));
@@ -364,6 +414,8 @@ function ProfileForm({ initial, onSave }: { initial?: NutritionProfile; onSave: 
           ))}
         </div>
       </div>
+
+      <CalorieAdjust p={p} onChange={(kcalAdjust) => set({ kcalAdjust })} />
 
       <div className="form-grid two">
         <NumField label="Typowy bieg" unit="km" value={p.runKm} onChange={(runKm) => set({ runKm })} decimal />
