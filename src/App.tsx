@@ -6,6 +6,7 @@ import { auth, db, googleProvider } from "./firebase";
 import { todayKey } from "./lib/dates";
 import { defaultPlan } from "./lib/plan";
 import { useSettings } from "./lib/settings";
+import { reloadToLatest, useUpdateAvailable } from "./lib/update";
 import { deleteDay, saveDay, savePlan, useServerStatus, useUserData } from "./lib/store";
 import type { DayLog, Plan } from "./lib/types";
 import { AppCtx, Icon, Sheet } from "./ui/common";
@@ -116,6 +117,7 @@ function Home({ db, user }: { db: Firestore; user: User }) {
   const [toast, setToast] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, updateSettings] = useSettings();
+  const updateAvailable = useUpdateAvailable();
   const [rest, setRest] = useState<{ endsAt: number; total: number } | null>(null);
   const endRest = useCallback(() => setRest(null), []);
   const restDone = useCallback(() => {
@@ -250,6 +252,11 @@ function Home({ db, user }: { db: Firestore; user: User }) {
     >
       <div className="app">
         {banner && <SyncBanner text={banner} />}
+        {updateAvailable && !banner && (
+          <button className="update-banner" onClick={reloadToLatest}>
+            Jest nowa wersja aplikacji — <u>odśwież</u>
+          </button>
+        )}
         <main className="content">
           {tab === "today" && <Today />}
           {tab === "plan" && <PlanView />}

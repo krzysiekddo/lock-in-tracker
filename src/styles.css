@@ -1833,3 +1833,17 @@ textarea:focus {
 .adjust-preview strong {
   font-variant-numeric: tabular-nums;
 }
+
+.update-banner {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: block;
+  width: 100%;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+}
